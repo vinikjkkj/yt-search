@@ -655,7 +655,7 @@ function _parseSearchResultInitialData ( responseText, callback )
               videoId: videoId,
               url: url,
 
-              title: title.trim(),
+              title: _normalizeText( title ).trim(),
               description: description,
 
               image: thumbnail,
@@ -730,7 +730,7 @@ function _parseSearchResultInitialData ( responseText, callback )
               listId: listId,
               url: url,
 
-              title: title.trim(),
+              title: _normalizeText( title ).trim(),
 
               image: thumbnail,
               thumbnail: thumbnail,
@@ -833,7 +833,7 @@ function _parseSearchResultInitialData ( responseText, callback )
               baseUrl: base_url,
               id: channelId,
 
-              title: title.trim(),
+              title: _normalizeText( title ).trim(),
               about: about_channel,
 
               image: thumbnail,
@@ -905,7 +905,7 @@ function _parseSearchResultInitialData ( responseText, callback )
               videoId: videoId,
               url: url,
 
-              title: title.trim(),
+              title: _normalizeText( title ).trim(),
               description: description,
 
               image: thumbnail,
@@ -1309,7 +1309,7 @@ function _parsePlaylistInitialData ( responseText, callback )
     )
 
     const video = {
-      title: (
+      title: _normalizeText(
         _jp.value( json, '$..title..simpleText' ) ||
         _jp.value( json, '$..title..text' ) ||
         ( _jp.query( json, '$..title..text' ) ).join( '' )
@@ -1585,6 +1585,32 @@ function _parseNumbers ( label )
   return results
 }
 
+/* Helper fn to coerce a text node into a plain string.
+ *
+ * YouTube serves newer surfaces (dynamicTextViewModel, lockup view models) where
+ * `text` holds an object such as { content, styleRuns } instead of a string, so a
+ * jsonpath lookup like '$..title..text' can resolve to an object and break the
+ * string methods used on titles.
+ */
+function _normalizeText ( value )
+{
+  if ( typeof value === 'string' ) return value
+  if ( value == null ) return ''
+
+  if ( Array.isArray( value ) ) {
+    return value.map( _normalizeText ).join( '' )
+  }
+
+  if ( typeof value === 'object' ) {
+    if ( typeof value.content === 'string' ) return value.content
+    if ( typeof value.text === 'string' ) return value.text
+    if ( typeof value.simpleText === 'string' ) return value.simpleText
+    if ( Array.isArray( value.runs ) ) return _normalizeText( value.runs )
+  }
+
+  return ''
+}
+
 /* Helper fn to choose a good thumbnail.
  */
 function _normalizeThumbnail ( thumbnails )
@@ -1656,7 +1682,7 @@ function _parseVideoMetaDataTitle( idata ) {
   )
 
   // remove zero-width chars
-  return t.replace( /[\u0000-\u001F\u007F-\u009F\u200b]/g, '' )
+  return _normalizeText( t ).replace( /[\u0000-\u001F\u007F-\u009F\u200b]/g, '' )
 }
 
 // run tests is script is run directly
